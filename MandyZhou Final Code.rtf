@@ -1,0 +1,235 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2580
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 install.packages("stringr")\
+library(stringr)\
+install.packages("ggplot2")\
+library(ggplot2)\
+install.packages("plotrix")\
+library(plotrix)\
+\
+#analysis on track features to predict popularity\
+spotify_features\
+\
+\
+#Backward selection: Starts from the fullest model with all the variables and systematically drops terms.\
+#Use the drop1() function to drop the terms; Use the update function to modify the model\
+#Fullest regression model with all variables to predict the popularity of song by looking at playtimes\
+featuresfit0 <- lm(playtimes~danceability+energy+key+loudness+mode+speechiness+acousticness+valence+instrumentalness+liveness+tempo+duration_ms+time_signature+explicit,data=spotify_features)\
+summary(featuresfit0)\
+\
+drop1(featuresfit0,test="F")\
+\
+#remove the time_signature term\
+featuresfit1 <- update(featuresfit0,.~.-time_signature)\
+drop1(featuresfit1,test="F")\
+\
+#remove the speechiness term\
+featuresfit2 <- update(featuresfit1,.~.-speechiness)\
+drop1(featuresfit2,test="F")\
+\
+#remove the duration_ms term\
+featuresfit3 <- update(featuresfit2,.~.-duration_ms)\
+drop1(featuresfit3,test="F")\
+\
+#remove the explicit term\
+featuresfit4 <- update(featuresfit3,.~.-explicit)\
+drop1(featuresfit4,test="F")\
+\
+#remove the liveness term\
+featuresfit5 <- update(featuresfit4,.~.-liveness)\
+drop1(featuresfit5,test="F")\
+\
+#remove the valence term\
+featuresfit6 <- update(featuresfit5,.~.-valence)\
+drop1(featuresfit6,test="F")\
+\
+#remove the tempo term\
+featuresfit7 <- update(featuresfit6,.~.-tempo)\
+drop1(featuresfit7,test="F")\
+\
+#remove the loudness term\
+featuresfit8 <- update(featuresfit7,.~.-loudness)\
+drop1(featuresfit8,test="F")\
+\
+#remove the danceability term\
+featuresfit9 <- update(featuresfit8,.~.-danceability)\
+drop1(featuresfit9,test="F")\
+\
+#remove the instrumentalness term\
+featuresfit10 <- update(featuresfit9,.~.-instrumentalness)\
+drop1(featuresfit10,test="F")\
+\
+#remove the mode term\
+featuresfit11 <- update(featuresfit10,.~.-mode)\
+drop1(featuresfit11,test="F")\
+\
+#the most significant factors that contributes to the playtimes and the popularity of the songs are energy, key, and acousticness\
+plot(featuresfit11, which=1)\
+\
+#make a data frame to find out the correlation of the top related fields (get rid of the fields with the biggest p-values)\
+featuresdata <- data.frame(danceability=spotify_features$danceability, \
+                           energy=spotify_features$energy, \
+                           key=spotify_features$key, \
+                           loudness=spotify_features$loudness,\
+                           mode=spotify_features$mode,\
+                           acousticness=spotify_features$acousticness,\
+                           instrumentalness=spotify_features$instrumentalness,\
+                           valence=spotify_features$valence,\
+                           tempo=spotify_features$tempo) \
+featuresdata\
+\
+cor(featuresdata)\
+\
+#energy and danceability seems to have a strong correlation, we will further explore this in a glm and a plot\
+energyfit <- glm(danceability~energy, data=spotify_features, family = binomial)\
+plot(spotify_features$energy~spotify_features$danceability)\
+curve(predict(energyfit, data.frame(energy=x),type="response"),add=TRUE)\
+plot(energyfit, which=2)\
+\
+#plot the three variables that have the strongest contribution to popularity\
+plot(spotify_features$energy, spotify_features$playtimes)\
+plot(spotify_features$key, spotify_features$playtimes)\
+plot(spotify_features$acousticness, spotify_features$playtimes)\
+\
+#analysis on categorical and dummy variables\
+ggplot(spotify_features, aes(x = time_signature)) +geom_bar()\
+ggplot(spotify_features, aes(x = mode)) +geom_bar()\
+ggplot(spotify_features, aes(x = key)) +geom_bar()\
+ggplot(spotify_features, aes(x = explicit)) +geom_bar()\
+\
+#scatterplot facet wrap of valence and key\
+ggplot(spotify_features, aes(x=valence, y=rank))+geom_point()+facet_wrap(~key,nrow=4)\
+\
+#scatterplot facet wrap of key and made\
+#More major mode tracks than minor\
+ggplot(spotify_features, aes(x=key, y=rank))+geom_point()+facet_wrap(~mode,nrow=1)\
+\
+#scatterplot facet wrap of key and mode\
+#Athough there are more tracks in major mode than in minor mode, there is almost equal number \
+#of music that are depressed and sad compared to bright and positive\
+ggplot(spotify_features, aes(x=valence, y=rank))+geom_point()+facet_wrap(~mode,nrow=2)\
+\
+\
+\
+#combination analysis on numerical and categorical variables based on their correlation with each other and how they both contribute to popularity\
+ggplot(spotify_features, aes(x=energy, y=danceability))+\
+    geom_point(aes(col=factor(mode), shape=factor(mode)))+theme_light()\
+\
+ggplot(spotify_features, aes(x=tempo, y=energy))+\
+  geom_point(aes(col=factor(mode), shape=factor(mode)))+theme_light()\
+\
+ggplot(spotify_features, aes(x=tempo, y=danceability))+\
+  geom_point(aes(col=factor(mode), shape=factor(mode)))+theme_light()\
+\
+#relationship between energy and loudness\
+#look for discernable pattern between x and y\
+energyloudness <- lm(energy~loudness,data=spotify_features)\
+energyloudness\
+plot(energyloudness, which=1)\
+\
+\
+\
+\
+\
+#analysis on album features to predict track's popularity\
+spotify_album\
+\
+#genre frequency\
+qplot(spotify_album$genre,\
+      na.rm=TRUE,\
+      geom="blank",\
+      main="Genre Frequency",\
+      xlab="Genre",\
+      ylab="Frequency")+geom_bar()\
+\
+#record label frequency\
+slices <- c(14, 7, 4, 3, 3, 2, 17)\
+lbls <- c("Sony Music Entertainment", \
+          "UMG Recordings", \
+          "Warner Music", \
+          "Geffen Records", \
+          "RCA Records", \
+          "Atlantic Recording Corporation",\
+          "Other")\
+pct <- round(slices/sum(slices)*100)\
+lbls <- paste(lbls, pct) \
+lbls <- paste(lbls,"%",sep="")\
+pie(slices,labels = lbls, col=rainbow(length(lbls)),\
+    main="Record Labels Pie Chart of the Top 50")\
+\
+#facet wrap for the top record labels\
+#Sony Entertainment has the widest rage of popularity for their albums on the list\
+ggplot(spotify_album, aes(x=genre,y=rank))+geom_point()+facet_wrap(~recordlabel,nrow=6)\
+\
+#Residual vs. Fitted graph for avaiable_markets and popularity.\
+#Most albums are available for most of the states With several outliers that are only available in a small amount of the states.\
+#However, fewer markets available is still able to make the tracks popular due to other factors.\
+market <- lm(playtimes~available_markets,data=spotify_album)\
+market\
+plot(market, which=1)\
+\
+\
+#The Matcher: Stringr\
+#Using the str_length() method to compare the length of the field available_markets.\
+#The longer the string field, the more market the album is available in. \
+markettext <- c(spotify_album$available_markets)\
+marketlength <- str_length(markettext)\
+marketlength\
+\
+playtimes <- c(spotify_album$playtimes)\
+playtimes\
+\
+plot(marketlength,playtimes, main="Available Markets and Playtimes")\
+\
+\
+\
+#analysis on artist features to predict track's popularity\
+spotify_artists\
+\
+#ploting the genre frequency of artists\
+ggplot(spotify_artists,\
+       aes(x=genre),\
+       horiz=TRUE, \
+       main="count of artist genre", \
+       xlab="artist genre",\
+       ylab="count")+geom_dotplot(binwidth=0.2,color="orange")+coord_flip()+theme_bw()\
+\
+#correlation between playtimes, followers, and popularity rank\
+artistdata <- data.frame(playtimes=spotify_artists$playtimes, \
+                         followers=spotify_artists$followers, \
+                         popularity=spotify_artists$popularity) \
+artistdata\
+cor(artistdata)\
+\
+\
+artistfit1 <- lm(playtimes~followers,data=artistdata)\
+summary(artistfit1)\
+plot(artistfit1, which=1)\
+\
+#visual description of the relationship between playtimes, followers, and popularity rank\
+artistfit1 <- glm(playtimes~followers,data=artistdata)\
+summary(artistfit1)\
+plot(artistfit1, which=1)\
+ggplot(spotify_artists, aes(x=followers, y=playtimes))+\
+  geom_point(aes(col=factor(genre), shape=factor(genre)))+theme_light()+scale_shape_manual(values=seq(0,15))\
+\
+\
+artistfit2 <- glm(playtimes~popularity,data=artistdata)\
+summary(artistfit2)\
+plot(artistfit1, which=1)\
+ggplot(spotify_artists, aes(x=popularity, y=playtimes))+\
+  geom_point(aes(col=factor(genre), shape=factor(genre)))+theme_light()+scale_shape_manual(values=seq(0,15))\
+\
+\
+artistfit3 <- glm(popularity~followers,data=artistdata)\
+summary(artistfit3)\
+plot(artistfit3, which=1)\
+ggplot(spotify_artists, aes(x=followers, y=popularity))+\
+  geom_point(aes(col=factor(genre), shape=factor(genre)))+theme_light()+scale_shape_manual(values=seq(0,15))\
+\
+}
